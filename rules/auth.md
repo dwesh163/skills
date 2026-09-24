@@ -62,7 +62,7 @@ export async function session() {
 
 export async function getUser() {
   const result = await session();
-  if (!result?.user) throw new Error("User not authenticated"); // or UnauthenticatedError, see services-and-errors.md
+  if (!result?.user) throw new Error("User not authenticated"); // or UnauthorizedError, see services-and-errors.md
   return result.user;
 }
 ```

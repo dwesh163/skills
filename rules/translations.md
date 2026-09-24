@@ -109,6 +109,40 @@ Compute `entity`/`entities`/`Entity` once per component from the entity's own
 translation block, not re-derived ad hoc at each call site (and `gender`
 alongside them — see below).
 
+## `errors.*` mirrors the `ExpectedError` codes exactly
+
+A `ServiceResponse`'s `error` field (see services-and-errors.md) is never a
+free-form string — it's always exactly one of `notFound`, `forbidden`,
+`unauthorized`, `badRequest`, `internal`, or the sanitizer's own `unknown`
+fallback. `errors.*` carries one key per code, no more, no fewer, so the
+client can key straight off the value instead of re-deriving a message from
+a boolean:
+
+```json
+"errors": {
+  "notFound": "...",
+  "forbidden": "...",
+  "unauthorized": "...",
+  "badRequest": "...",
+  "internal": "...",
+  "unknown": "..."
+}
+```
+
+```ts
+const translations = { errors: useTranslations("errors") };
+const { error } = await products.update(id, data);
+if (error) toast.error(translations.errors(error));
+```
+
+Add a sixth code to this list only if a new `ExpectedError` subclass in
+services-and-errors.md actually introduces one — never add an `errors.*` key
+that no class or fallback produces, and never remove one of the five fixed
+codes (or `unknown`) while its class still exists. `RuleError`'s `rules.<rule>`
+codes are the one exception: they're a dynamic, per-rule namespace of their
+own, keyed the same way (`translations.rules(error)`), not a fixed slot in
+`errors.*`.
+
 ## Gender: store it on the entity, agree via ICU `select`
 
 French grammatical gender (créé/créée, ce/cette, un/une) is a property of the
@@ -182,10 +216,11 @@ Every `useTranslations`/`getTranslations` call must be a property of the
 same `translations` object — no sibling `const foo = useTranslations(...)`
 declarations, even if there's only one namespace to bind.
 
-Never render `toast.error(error)` with a raw service error string — map the
-boolean presence of an error to a translated `actions.error.*` message
-instead (see services-and-errors.md for why the raw message is unsafe to
-display).
+Never render `toast.error(error)` with a raw service error string. Key it
+into `errors.*` (see above) whenever the code is available; fall back to the
+boolean-presence `actions.error.*` message (see above) only where the call
+site genuinely has no code to key off — not as the default (see
+services-and-errors.md for why the raw message itself is unsafe to display).
 
 Before committing hand-written nested ICU (`select`/`plural`), sanity-check
 the syntax with `@formatjs/icu-messageformat-parser` — it's valid but easy to

@@ -62,7 +62,7 @@ export async function toResponse<T>(fn: () => Promise<T>, fallback: string): Pro
     const expected = error instanceof ExpectedError;
     console.error(fallback, error);
     if (!expected) await log.error("service", error instanceof Error ? error.message : fallback, { fallback });
-    return { data: null, error: expected ? error.code : "Internal server error" };
+    return { data: null, error: expected ? error.code : "unknown" };
   }
 }
 ```
@@ -84,16 +84,19 @@ export async function update(id: number, data: Partial<Product>): Promise<Servic
 - CRUD verb names: `list`, `get`, `create`, `update`, `remove`, `reorder` —
   not `getAll`, `delete`, `fetch`. Stay consistent with sibling services.
 - **Why `toResponse` sanitizes:** it only lets an `ExpectedError` subclass's
-  `.code` reach the client. Anything else — a bare `Error`, a
-  `PrismaClientKnownRequestError`, a driver error — collapses to the generic
-  `"Internal server error"` string, because Prisma/driver messages can leak
-  raw query/column details to the browser. The `fallback` string is still
-  logged server-side, so debugging isn't lost, it's just not shown to the
-  user. **Never** catch a Prisma error yourself and return `error.message`
-  directly, and never add a new error class without extending
-  `ExpectedError` — an unrecognized class is treated as unexpected.
+  `.code` reach the client — one of `notFound`, `forbidden`, `unauthorized`,
+  `badRequest`, `internal`, or a `RuleError`'s `rules.<rule>`. Anything else —
+  a bare `Error`, a `PrismaClientKnownRequestError`, a driver error —
+  collapses to the generic `"unknown"` code, because Prisma/driver messages
+  can leak raw query/column details to the browser. The `fallback` string is
+  still logged server-side, so debugging isn't lost, it's just not shown to
+  the user. **Never** catch a Prisma error yourself and return
+  `error.message` directly, and never add a new error class without
+  extending `ExpectedError` — an unrecognized class is treated as unexpected
+  and collapses to `"unknown"` too.
 - On the client: never `toast.error(error)` with a service's raw error
-  string. Map the boolean presence of an error to a translated message (see
+  string. `error` is exactly one of the codes above — key straight into
+  `errors.*` with it instead of just checking whether it's non-null (see
   translations.md).
 - **Ordering with not-yet-persisted rows:** a client-side "new" item placed
   in a list before it's saved (temp `id: Date.now()`) doesn't have a real
@@ -225,9 +228,9 @@ export class ForbiddenError extends ExpectedError {
   readonly code = "forbidden";
   constructor(readonly entity?: Entity) { super(entity ? `${entity} access denied` : "Forbidden"); this.name = "ForbiddenError"; }
 }
-export class UnauthenticatedError extends ExpectedError {
-  readonly code = "unauthenticated";
-  constructor() { super("User not authenticated"); this.name = "UnauthenticatedError"; }
+export class UnauthorizedError extends ExpectedError {
+  readonly code = "unauthorized";
+  constructor() { super("User not authenticated"); this.name = "UnauthorizedError"; }
 }
 // A business-rule rejection with a specific translated message. `.code` reproduces the
 // "rules.<key>" wire format so the client can key a translation off it directly.
@@ -240,13 +243,23 @@ export class BadRequestError extends ExpectedError {
   readonly code = "badRequest";
   constructor(message: string) { super(message); this.name = "BadRequestError"; }
 }
-// A recognized internal/infra failure (downstream integration error, missing seed row) —
-// deliberately NOT an ExpectedError. toResponse still sanitizes it to the generic message
-// exactly like an unrecognized exception; this class only documents intent at the throw site.
-export class InternalServerError extends Error {
+// A recognized internal/infra failure (downstream integration error, missing seed row) — an
+// ExpectedError like the others, so the client gets the stable "internal" code instead of
+// falling into the same "unknown" bucket as a truly unanticipated exception. `message` is
+// still never sent to the client (see toResponse above) — only `.code` crosses that boundary.
+export class InternalServerError extends ExpectedError {
+  readonly code = "internal";
   constructor(message: string) { super(message); this.name = "InternalServerError"; }
 }
 ```
+
+Five codes in total reach the client this way: `notFound`, `forbidden`,
+`unauthorized`, `badRequest`, `internal` — plus the sanitizer's own
+`"unknown"` fallback for anything that isn't one of these (and `RuleError`'s
+dynamic `rules.<rule>`, which is a separate, per-rule namespace rather than a
+fixed code). translations.md's `errors.*` block carries exactly one key per
+fixed code, `unknown` included — never fewer, never an extra one that no
+class or fallback actually produces.
 
 `entity` is typed as `Entity` (from `IDENTITIES`, see above), not a bare
 `string` — passing a typo'd or ad hoc string literal here is a compile
@@ -256,10 +269,11 @@ Throw the specific class at the point of failure — never a bare
 `new Error("...")` sentinel string. A record that should exist but doesn't:
 `NotFoundError(entity)`. A permission check that fails:
 `ForbiddenError(entity)`. A recognized-but-internal failure you want to name
-instead of an anonymous `Error`: `InternalServerError(message)` — it's still
-sanitized by `toResponse`, the class just self-documents the throw site. A
-truly unanticipated exception (Prisma crashing) doesn't need catching and
-rethrowing as anything — `toResponse`'s catch-all already handles it.
+instead of an anonymous `Error`: `InternalServerError(message)` — the client
+gets the stable `internal` code instead of the generic `unknown` fallback,
+while `message` itself still never leaves the server. A truly unanticipated
+exception (Prisma crashing) doesn't need catching and rethrowing as
+anything — `toResponse`'s catch-all already collapses it to `unknown`.
 
 ## Shape C — owns the data, throws directly (small apps)
 
