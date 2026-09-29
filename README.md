@@ -32,6 +32,7 @@ that one repo instead of every session.
 - [`rules/auth.md`](rules/auth.md) — better-auth setup, OIDC providers, DB-backed vs. stateless sessions, `proxy.ts`, token refresh, optional plugins (two-factor/TOTP)
 - [`rules/stripe.md`](rules/stripe.md) — `@better-auth/stripe` billing, per-user and per-organization subscriptions, the `authorizeReference` permission check
 - [`rules/legal.md`](rules/legal.md) — privacy policy/terms-of-use routes, shared rendering component, keeping the routes public
+- [`rules/seo.md`](rules/seo.md) — metadata and title template, Open Graph images, sitemap, robots, icons, `noindex` for private routes
 - [`rules/permissions.md`](rules/permissions.md) — IdP-groups, app-local, delegated, and org-scoped authorization — which case applies when
 - [`rules/services-and-errors.md`](rules/services-and-errors.md) — the service layer, typed errors, the not-found/error-boundary trio
 - [`rules/client-components.md`](rules/client-components.md) — server vs. client component boundary, server functions vs. API routes

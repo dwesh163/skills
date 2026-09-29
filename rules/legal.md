@@ -124,3 +124,8 @@ easier to keep correct than listing each slug by hand, since a new document
 added under `LEGAL_LAST_UPDATED` shouldn't also require a matcher edit to
 stay reachable.
 
+## Metadata and sitemap
+
+Each document sets `generateMetadata` from its own `pages.legal.<doc>` title
+(the `title.template` in seo.md adds the site name) and is listed in
+`sitemap.ts` with `lastModified` taken from `LEGAL_LAST_UPDATED` — see seo.md.

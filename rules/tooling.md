@@ -441,3 +441,8 @@ Every secret-bearing var goes in `.env.example` with a placeholder value
 only for local dev (gitignored). `AUTH_SECRET` is generated fresh per project
 (`randomBytes(32).toString("base64")`), never copied from another project's
 `.env`.
+
+Apps with public pages also declare `NEXT_PUBLIC_APP_NAME` and
+`NEXT_PUBLIC_APP_URL` (canonical origin, no trailing slash — both inlined at
+build time, so pass them as Docker build args / CI env) and optionally `ROBOTS_INDEX=false` for staging; both are used by
+seo.md (metadata, sitemap, robots).

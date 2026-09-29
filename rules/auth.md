@@ -202,7 +202,8 @@ runtime; there's nothing heavy to keep out here in the first place.
 before (`src/constants/routes.ts`, or `permissions.ts` in apps using the
 `admin`-plugin access control — see permissions.md). Always exclude
 `api/auth`, the sign-in page itself, `error`, static assets, and
-files-with-extensions from the matcher.
+files-with-extensions from the matcher. Apps with public SEO pages also exclude the
+extension-less `opengraph-image`/`twitter-image` routes — see seo.md.
 
 Unlike a library with its own hosted sign-in page, better-auth expects the
 app to own a real `/sign-in` route — a normal page that calls

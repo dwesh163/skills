@@ -85,6 +85,7 @@ documents for that specific codebase.
 | Local dev DB | `make up` — `Makefile` + `docker-compose.dev.yml`, not inline `docker run` |
 | Billing (optional) | `@better-auth/stripe`, per-user or per-organization — see stripe.md |
 | Legal pages (optional) | static `/legal/<slug>` routes, one shared component, next-intl content — see legal.md |
+| SEO (optional) | file-based metadata: title template, OG images, `sitemap.ts`, `robots.ts`, `noindex` for private routes — see seo.md |
 
 ## Reference files
 
@@ -103,6 +104,7 @@ Read the matching file before touching that area of a codebase:
 - [rules/git-workflow.md](rules/git-workflow.md) — commit message format and tag vocabulary, version-bump commits and how they trigger a release, why to prefer several small commits, the Makefile/docker-compose local dev setup
 - [rules/stripe.md](rules/stripe.md) — `@better-auth/stripe` billing, per-user vs per-organization subscriptions, the `authorizeReference` permission check, webhook routing
 - [rules/legal.md](rules/legal.md) — privacy policy/terms-of-use routes, the shared `LegalDocument` component, `LEGAL_LAST_UPDATED`, keeping the routes public in `proxy.ts`
+- [rules/seo.md](rules/seo.md) — `SITE` constant, root/per-page metadata and title template, Open Graph images, `sitemap.ts`, `robots.ts`, icons, `noindex` for private routes, JSON-LD, the i18n caveat
 
 These are living documents: when you learn a convention doesn't hold in a new
 repo, or a repo evolves one, update the matching file instead of silently
