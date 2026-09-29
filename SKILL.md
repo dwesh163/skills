@@ -84,6 +84,7 @@ documents for that specific codebase.
 | Commits | `[tag] Capitalized description` — not Conventional Commits — see git-workflow.md |
 | Local dev DB | `make up` — `Makefile` + `docker-compose.dev.yml`, not inline `docker run` |
 | Billing (optional) | `@better-auth/stripe`, per-user or per-organization — see stripe.md |
+| Legal pages (optional) | static `/legal/<slug>` routes, one shared component, next-intl content — see legal.md |
 
 ## Reference files
 
@@ -101,6 +102,7 @@ Read the matching file before touching that area of a codebase:
 - [rules/tooling.md](rules/tooling.md) — Biome config, Dockerfile, GitHub Actions workflows, root layout wiring, env files
 - [rules/git-workflow.md](rules/git-workflow.md) — commit message format and tag vocabulary, version-bump commits and how they trigger a release, why to prefer several small commits, the Makefile/docker-compose local dev setup
 - [rules/stripe.md](rules/stripe.md) — `@better-auth/stripe` billing, per-user vs per-organization subscriptions, the `authorizeReference` permission check, webhook routing
+- [rules/legal.md](rules/legal.md) — privacy policy/terms-of-use routes, the shared `LegalDocument` component, `LEGAL_LAST_UPDATED`, keeping the routes public in `proxy.ts`
 
 These are living documents: when you learn a convention doesn't hold in a new
 repo, or a repo evolves one, update the matching file instead of silently
