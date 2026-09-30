@@ -403,8 +403,10 @@ function code(error: unknown): string {
   return error instanceof ExpectedError ? error.code : "unknown";
 }
 
-// Non-critical read: the page still renders without the data.
-async function soft<T>(promise: Promise<T>, fallback: T): Promise<Loaded<T>> {
+// Non-critical read: the page still renders without the data. A falsy `promise`
+// (`null`/`false`/`undefined`) is skipped and resolves to `fallback`.
+async function soft<T>(promise: Promise<T> | null | false | undefined, fallback: T): Promise<Loaded<T>> {
+  if (!promise) return { data: fallback, error: null };
   try {
     return { data: await promise, error: null };
   } catch (error) {
@@ -449,6 +451,9 @@ if (!order) return <EntityNotFound entity={IDENTITIES.ORDERS} backHref="/orders"
 const { data: logs, error: logsError } = await load(logsApi.list(), []);
 // ...
 {logsError && <ErrorCard error={logsError} />}
+
+// conditional read (e.g. only when signed in): no ternary, the falsy value is skipped
+const { data: organisations, error: organisationsError } = await load(session && organisationsApi.list(), []);
 
 // a batch
 const results = await Promise.all(projects.map((p) => load(projectsApi.get(p.id), null)));
