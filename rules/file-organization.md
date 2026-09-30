@@ -26,6 +26,7 @@ src/
     prisma.ts                    — the Prisma client singleton
     permissions.ts                — access-control statements/roles, if using them (see permissions.md)
     utils.ts, format.ts, log.ts, api.ts — cross-cutting helpers
+    load.ts                       — load()/load.optional()/load.failure(): reads whose failure is a value (see services-and-errors.md)
   providers/                — thin "use client" wrappers around context providers
   i18n/
     config.ts                — locales, defaultLocale, the Locale type — no I/O, importable anywhere

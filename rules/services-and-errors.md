@@ -33,7 +33,7 @@ export const RESOURCES: Record<Entity, { icon: LucideIcon }> = {
 
 ```tsx
 throw new ForbiddenError(IDENTITIES.PRODUCTS);   // not ForbiddenError("products")
-<EntityNotFound entity={IDENTITIES.ORDERS} />     // not entity="orders"
+<EntityNotFound entity={IDENTITIES.ORDERS} backHref="/orders" />  // not entity="orders"
 ```
 
 `Entity` is *derived* from `IDENTITIES`, not declared as a separate union by
@@ -210,6 +210,11 @@ mutations; only methods that change server state need the directive
 explicitly (as their first statement) when the file itself isn't
 `"use server"` top-to-bottom.
 
+In Shape B/C a service that throws is fine for a page's *own* data (it reaches
+`error.tsx`), but any read that is only *secondary* to the page — a side panel,
+a list in the layout — must go through `load` (see "`load`" below) so its
+failure is shown, not swallowed.
+
 Pick Shape A when the app is the system of record; pick Shape B when it's a
 dashboard/admin console in front of another service's API.
 
@@ -333,10 +338,18 @@ catch-all for unmatched URLs. You don't render this directly; Next calls it.
 `src/components/not-found.tsx` exports `EntityNotFound`:
 
 ```tsx
-if (!order) return <EntityNotFound entity={IDENTITIES.ORDERS} />;
+// Shape A: the ServiceResponse carries the miss
+if (!order) return <EntityNotFound entity={IDENTITIES.ORDERS} backHref="/orders" />;
+
+// Shape B/C: the service throws NotFoundError; `load.optional` turns only that into null
+const order = await load.optional(orders.get(id));
+if (!order) return <EntityNotFound entity={IDENTITIES.ORDERS} backHref="/orders" />;
 ```
 
 Render it directly once a fetch returns nothing — don't throw for this case.
+`backHref` is the entity's list route (the "back" button label is the
+entity's plural title). Use `load.optional` (see the `load` section below),
+never `.catch(() => null)`, so a real failure isn't reported as "not found".
 `entity` is an `IDENTITIES` value (see above), never a bare string literal.
 Works from both a client component and an `async` server component
 (`EntityNotFound` is itself `"use client"`, a server component can still
@@ -367,4 +380,116 @@ exceptions; this boundary stays generic on purpose.
 `src/components/error.tsx` exports `ErrorCard`, a small card for "this
 section's data failed to load" inside an otherwise-working page. Use this
 instead of the full `AppError` boundary when the rest of the page is still
-usable and only one panel failed.
+usable and only one panel failed. Feed it with `load()` (next section), not
+a `.catch()`.
+
+## `load` — never swallow an error with `.catch(() => [])`
+
+`.catch(() => [])` / `.catch(() => null)` on a read makes a failure look
+identical to "there is nothing here": the user sees an empty list and nobody
+knows something broke. Don't write it. Every read either **throws** (to the
+nearest `error.tsx`) or goes through `src/lib/load.ts`, which makes the
+failure a value the page can render. `load` is one callable with three
+helpers attached, so there is a single import:
+
+```ts
+// src/lib/load.ts
+import { ExpectedError, NotFoundError } from "@/constants/errors";
+
+export type Loaded<T> = { data: T; error: string | null };
+
+// The stable code the client keys into `errors.*`; anything unexpected is "unknown".
+function code(error: unknown): string {
+  return error instanceof ExpectedError ? error.code : "unknown";
+}
+
+// Non-critical read: the page still renders without the data.
+async function soft<T>(promise: Promise<T>, fallback: T): Promise<Loaded<T>> {
+  try {
+    return { data: await promise, error: null };
+  } catch (error) {
+    console.error(error); // logged server-side; only the code reaches the client
+    return { data: fallback, error: code(error) };
+  }
+}
+
+// A missing record is `null`; every other failure still throws to the boundary.
+async function optional<T>(promise: Promise<T>): Promise<T | null> {
+  try {
+    return await promise;
+  } catch (error) {
+    if (error instanceof NotFoundError) return null;
+    throw error;
+  }
+}
+
+// First error code among several results, so one ErrorCard covers a batch.
+function failure(results: { error: string | null }[]): string | null {
+  return results.find((r) => r.error)?.error ?? null;
+}
+
+export const load = Object.assign(soft, { optional, code, failure });
+```
+
+Pick the helper by what the read means for the page:
+
+| The read is… | Use | On failure |
+|---|---|---|
+| the page's own record (detail page) | `load.optional(x.get(id))` → `<EntityNotFound />` on `null` | non-404 errors reach `error.tsx` |
+| a secondary panel (a list, a side card) | `load(x.list(), [])` → `{ data, error }` | `<ErrorCard error={error} />` next to/instead of the panel |
+| several secondary reads | `load.failure(results)` | one `ErrorCard` for the first failure |
+| chrome in the root layout (org list, search index) | `load(...)` | a banner `ErrorCard` above `children` |
+
+```tsx
+// detail page
+const order = await load.optional(orders.get(id));
+if (!order) return <EntityNotFound entity={IDENTITIES.ORDERS} backHref="/orders" />;
+
+// secondary panel
+const { data: logs, error: logsError } = await load(logsApi.list(), []);
+// ...
+{logsError && <ErrorCard error={logsError} />}
+
+// a batch
+const results = await Promise.all(projects.map((p) => load(projectsApi.get(p.id), null)));
+const details = results.map((r) => r.data).filter((p) => p !== null);
+const error = load.failure(results);
+```
+
+`ErrorCard` is an async server component that renders `errors.<code>`
+(translations.md) — it takes the *code*, never a message, for the same reason
+`toResponse` never returns `error.message` (see above):
+
+```tsx
+// src/components/error.tsx
+export async function ErrorCard({ error, className }: { error: string; className?: string }) {
+  const translations = { errors: await getTranslations("errors") };
+  return (
+    <div role="alert" className={cn("flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive", className)}>
+      <TriangleAlert className="size-4 shrink-0" />
+      {translations.errors(error)}
+    </div>
+  );
+}
+```
+
+A service that aggregates a non-critical sub-read carries the code on its
+result instead of hiding it — e.g. `applications.get` returns
+`{ ...app, pods, podsError }` from `load(pods.list(app), [])`, and the page
+renders `ErrorCard` in place of the empty-pods message.
+
+Two things that are *not* `load`'s job:
+
+- **Fail-closed checks** (a permissions probe whose failure must read as
+  "not allowed") may return a safe default, but still `console.error` the
+  cause — never a bare `catch { return {} }`.
+- **Client-side `catch` around a server action** only has a generic toast to
+  show: in production an error thrown by a server action loses its class
+  crossing the boundary, so there is no code to key. If a mutation needs a
+  specific message, have it return a `ServiceResponse` (Shape A) instead of
+  throwing.
+
+The upstream API's status codes are the other half: in Shape B, map `404`/
+`403`/`401` to `NotFoundError`/`ForbiddenError`/`UnauthorizedError` once, in
+an axios response interceptor in `lib/api.ts`, so that `load.optional` and
+`load.code` see the named classes rather than raw `AxiosError`s.

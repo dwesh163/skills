@@ -26,6 +26,26 @@ first line of the file, followed by a blank line, e.g.:
 import { useTranslations } from "next-intl";
 ```
 
+## Fragments: `<Fragment>`, never `<>...</>`
+
+Never use the short-syntax fragment `<>...</>`. Always write an explicit
+`<Fragment>...</Fragment>` and import it from React:
+
+```tsx
+import { Fragment } from "react";
+
+return (
+  <Fragment>
+    <Header />
+    <Content />
+  </Fragment>
+);
+```
+
+This applies everywhere (server and client components). It also lets you pass
+a `key` when rendering a list (`<Fragment key={item.id}>`), which the short
+syntax can't do, so the same form is used in every case.
+
 ## Data fetching split
 
 - **Server component**: `const translations = { x: await getTranslations("...") }`,
@@ -44,9 +64,22 @@ it, are `async` server components — not client components with a
 export default async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { data: order } = await ordersService.get(id);
-  if (!order) return <EntityNotFound entity={IDENTITIES.ORDERS} />;
+  if (!order) return <EntityNotFound entity={IDENTITIES.ORDERS} backHref="/orders" />;
   // render — no loading state needed, the page blocks server-side
 }
+```
+
+With Shape B/C services (which throw), fetch the page's own record with
+`load.optional` and any *secondary* data with `load` so a failure renders an
+`ErrorCard` instead of an empty panel — never `.catch(() => null)` /
+`.catch(() => [])` (see services-and-errors.md, "`load`"):
+
+```tsx
+const order = await load.optional(orders.get(id));
+if (!order) return <EntityNotFound entity={IDENTITIES.ORDERS} backHref="/orders" />;
+const { data: events, error: eventsError } = await load(orderEvents.list(id), []);
+// ...
+{eventsError && <ErrorCard error={eventsError} />}
 ```
 
 No `loading`/`useState<T | undefined>` dance — the page simply doesn't

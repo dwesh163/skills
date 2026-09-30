@@ -93,8 +93,8 @@ Read the matching file before touching that area of a codebase:
 
 - [rules/file-organization.md](rules/file-organization.md) — `src/` layout, domain mirroring across `types`/`validations`/`services`/`components`, the `providers/` folder, generic cross-domain component folders (`dialog/`, ...), naming conventions
 - [rules/auth.md](rules/auth.md) — `better-auth` setup, OIDC providers, DB-backed vs stateless sessions, `proxy.ts` route guard, token refresh, `getUser()`/`session()`, optional plugins (two-factor/TOTP)
-- [rules/services-and-errors.md](rules/services-and-errors.md) — the service layer (`ServiceResponse<T>`/`toResponse` vs. thin REST-BFF), the `ExpectedError` hierarchy, the not-found/error-boundary trio
-- [rules/client-components.md](rules/client-components.md) — server vs. `"use client"` boundary, data-fetching split, server actions, and when a real `api/.../route.ts` is still justified over a server function
+- [rules/services-and-errors.md](rules/services-and-errors.md) — the service layer (`ServiceResponse<T>`/`toResponse` vs. thin REST-BFF), the `ExpectedError` hierarchy, the not-found/error-boundary trio, and `load()` for reads whose failure must be shown rather than swallowed
+- [rules/client-components.md](rules/client-components.md) — server vs. `"use client"` boundary, `<Fragment>` instead of `<>...</>`, data-fetching split, server actions, and when a real `api/.../route.ts` is still justified over a server function
 - [rules/validation.md](rules/validation.md) — zod schema-factory pattern, shared `common.ts` schemas, wiring into `react-hook-form`
 - [rules/translations.md](rules/translations.md) — `next-intl` message schema, ICU rules, gender handling, component-side conventions
 - [rules/prisma.md](rules/prisma.md) — schema location, `prisma.config.ts`, client singleton, generated-client placement

@@ -116,7 +116,7 @@ metadata. Titles ≈ 50–60 chars (the template suffix counts), descriptions
 ≈ 120–160, one unique pair per indexable page.
 
 Dynamic routes (`/products/[id]`) fetch through the same service layer as
-the page (services-and-errors.md) and call `notFound()` on a miss — wrap the
+the page (services-and-errors.md) and resolve a miss with `load.optional(...)` (→ `EntityNotFound`, or `notFound()` for an indexable public page) — wrap the
 fetch in `React.cache` so `generateMetadata` and the page don't query twice.
 
 ## Translations
