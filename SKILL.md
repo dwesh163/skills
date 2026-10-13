@@ -75,7 +75,7 @@ documents for that specific codebase.
 | Styling | Tailwind v4 + shadcn/ui (`components.json`, `style: new-york`), `cva`, `next-themes` — see ui.md |
 | Auth | `better-auth`, DB-backed sessions, OIDC provider, `src/proxy.ts` guard |
 | i18n | `next-intl`, `en`/`fr`, cookie + `Accept-Language` detection |
-| Database | Prisma (7.x), `pg` adapter, schema at `src/prisma/schema.prisma` |
+| Database | Prisma (7.x), `pg` adapter, schema at `src/prisma/schema.prisma`, snake_case in Postgres via `@map`/`@@map` on everything |
 | Validation | `zod` v4, schema-factory pattern for localized messages |
 | Permissions | IdP groups → better-auth's `admin` plugin + access control, or app-local/delegated — see permissions.md |
 | Forms | `react-hook-form` + `@hookform/resolvers/zod` |
@@ -97,7 +97,7 @@ Read the matching file before touching that area of a codebase:
 - [rules/client-components.md](rules/client-components.md) — server vs. `"use client"` boundary, `<Fragment>` instead of `<>...</>`, data-fetching split, server actions, and when a real `api/.../route.ts` is still justified over a server function
 - [rules/validation.md](rules/validation.md) — zod schema-factory pattern, shared `common.ts` schemas, wiring into `react-hook-form`
 - [rules/translations.md](rules/translations.md) — `next-intl` message schema, ICU rules, gender handling, component-side conventions
-- [rules/prisma.md](rules/prisma.md) — schema location, `prisma.config.ts`, client singleton, generated-client placement
+- [rules/prisma.md](rules/prisma.md) — schema location, `prisma.config.ts`, snake_case naming with `@map`/`@@map` (and renaming a live database), client singleton, generated-client placement
 - [rules/permissions.md](rules/permissions.md) — better-auth's access control for IdP-groups permissions vs. app-local/delegated authorization vs. org-scoped multi-tenant roles, route-level checks, when to reach for which
 - [rules/ui.md](rules/ui.md) — `components.json`, adding/customizing shadcn components, `cva` variants, `cn()`, light/dark theming (CSS variables, `next-themes`, the theme toggle)
 - [rules/tooling.md](rules/tooling.md) — Biome config, Dockerfile, GitHub Actions workflows, root layout wiring, env files

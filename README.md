@@ -38,7 +38,7 @@ that one repo instead of every session.
 - [`rules/client-components.md`](rules/client-components.md) — server vs. client component boundary, server functions vs. API routes
 - [`rules/validation.md`](rules/validation.md) — zod schema-factory pattern for localized forms
 - [`rules/translations.md`](rules/translations.md) — next-intl message schema and conventions
-- [`rules/prisma.md`](rules/prisma.md) — schema layout, client singleton, CLI-generated auth tables
+- [`rules/prisma.md`](rules/prisma.md) — schema layout, snake_case naming with `@map`/`@@map`, client singleton, CLI-generated auth tables
 - [`rules/ui.md`](rules/ui.md) — shadcn/ui components, `cva` variants, `cn()`, light/dark theming with `next-themes`
 - [`rules/tooling.md`](rules/tooling.md) — Biome, Docker, GitHub Actions
 - [`rules/git-workflow.md`](rules/git-workflow.md) — commit message format, version bumps, local dev environment

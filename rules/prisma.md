@@ -54,14 +54,90 @@ datasource db {
 ```
 
 `provider = "prisma-client"` (not `prisma-client-js`) is Prisma 7's ESM
-client generator. Snake_case columns via `@map`, camelCase in TypeScript —
-`createdAt`/`updatedAt` mapped to `created_at`/`updated_at` is the norm.
+client generator. Names are snake_case in the database and camelCase in
+TypeScript — see the next section.
 
 Some older repos in this stack colocate the generated client at
 `src/prisma/generated/` instead of a root-level `generated/`; either is fine
 as long as it's gitignored and the import paths are relative (see
 file-organization.md) — match whichever an existing repo already does, don't
 migrate it as a drive-by change.
+
+## Names: snake_case in the database, mapped everywhere
+
+No identifier in Postgres has a capital letter: no `"Stagiaire"` table, no
+`"workspaceId"` column. The Prisma side keeps PascalCase models and camelCase
+fields (so the TypeScript code never changes), and the schema maps **every**
+name that would otherwise carry a capital:
+
+- **Every model** gets `@@map("snake_case")`, singular like the model
+  (`StagiaireTag` → `stagiaire_tag`) — including better-auth's.
+- **Every field with a capital in it** gets `@map("snake_case")`:
+  `createdAt`/`updatedAt` → `created_at`/`updated_at`, every `xxxId` foreign key
+  → `xxx_id`, and the rest the same way (`firstName` → `first_name`,
+  `wpformsId` → `wpforms_id`). One-word fields (`name`, `status`) need nothing.
+- **Every enum** gets `@@map("snake_case")` (`StageStatus` → `stage_status`). The
+  values stay `UPPER_CASE`, they are data, not identifiers.
+
+```prisma
+model StagiaireTag {
+  stagiaireId String   @map("stagiaire_id")
+  tagSlug     String   @map("tag_slug")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@id([stagiaireId, tagSlug])
+  @@index([tagSlug])
+  @@map("stagiaire_tag")
+}
+
+enum StageStatus {
+  PLANNED
+  OPEN
+
+  @@map("stage_status")
+}
+```
+
+Relation fields (`stagiaire Stagiaire @relation(...)`) have no column, so no
+`@map`. Indexes, keys and foreign keys need no `map:` argument either: Prisma
+builds their names from the mapped names (`stagiaire_tag_tag_slug_idx`).
+
+**Raw SQL speaks the database's names**, not the schema's, and needs no
+quotes any more: `` $queryRaw`SELECT id FROM stage WHERE workspace_id = ${id}` ``,
+not `"Stage"` and `"workspaceId"`. `grep` for `$queryRaw`/`$executeRaw` after
+renaming anything.
+
+### Renaming an existing database
+
+Adding `@map`s to a schema whose tables already exist makes
+`prisma migrate dev` generate a `DROP TABLE` + `CREATE TABLE` for each one —
+and the data goes with them. Don't accept that migration; write it by hand with
+renames, in this order:
+
+1. `ALTER TYPE … RENAME TO` for the enums, `ALTER TABLE … RENAME TO` for the
+   tables, then `ALTER TABLE … RENAME COLUMN … TO` for the columns.
+2. Rename what carries the old names: primary keys and foreign keys with
+   `ALTER TABLE … RENAME CONSTRAINT`, other indexes with `ALTER INDEX … RENAME TO`.
+   Prisma's default names are `<table>_pkey`, `<table>_<columns>_idx|key|fkey`,
+   built from the *new* names, and it reports drift for any other name.
+3. Rename the leftovers Prisma does not look at: `CHECK`s added by hand in
+   earlier migrations, and on Postgres 18 the `<table>_<column>_not_null`
+   constraints, which keep the names they were created with. A `DO` loop over
+   `pg_constraint` (`contype = 'n'`) does the latter and is a no-op on older
+   versions.
+
+Then check it on a copy of the data before touching the real database, and
+prove the schema and the database agree (empty diff, exit code 0):
+
+```
+pg_dump dev | psql scratch      # a copy of the data, in a scratch database
+psql -1 -f migration.sql scratch
+DATABASE_URL=…/scratch prisma migrate diff --from-config-datasource \
+  --to-schema src/prisma/schema.prisma --exit-code --script
+```
+
+Replay all the migrations on an empty database too (`prisma migrate deploy`,
+then the same diff): that is what a fresh checkout or a first deploy runs.
 
 ## Auth tables — generated, not hand-written
 
@@ -89,6 +165,13 @@ adds a `subscription` table and a `stripeCustomerId` column on `user`.
 Regenerate after adding any of them, same command, same workflow. The rest
 of the schema (every domain model) stays entirely hand-written as normal; only the
 auth-and-plugin tables are CLI-managed.
+
+The CLI writes the camelCase columns without any `@map` (the table only gets its
+`@@map`), so the naming rule above is the one hand edit these models need: map
+every multi-word field (`emailVerified` → `email_verified`, `userId` → `user_id`,
+`createdAt` → `created_at`…). better-auth reads and writes through the Prisma
+field names, so nothing else changes. Look at the `git diff` of the schema after
+each regeneration and put back any `@map` it dropped.
 
 ## `src/lib/prisma.ts` — the singleton
 
