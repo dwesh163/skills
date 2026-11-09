@@ -1,0 +1,127 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "dwesh163-skills",
+  "description": "Agent skills for Next.js apps and language-agnostic engineering conventions: commits, Dockerfiles, CI/CD, local dev environment, environment variables.",
+  "owner": {
+    "name": "dwesh163",
+    "url": "https://github.com/dwesh163"
+  },
+  "plugins": [
+    {
+      "name": "nextjs",
+      "source": "./",
+      "strict": false,
+      "description": "House conventions for Next.js App Router apps in TypeScript with Bun, Biome, Tailwind and shadcn/ui, Prisma, better-auth, next-intl and zod.",
+      "category": "framework",
+      "tags": [
+        "nextjs",
+        "react",
+        "typescript",
+        "app-router",
+        "bun",
+        "biome",
+        "prisma",
+        "better-auth",
+        "next-intl",
+        "zod",
+        "shadcn-ui",
+        "tailwind"
+      ],
+      "skills": [
+        "./skills/nextjs"
+      ]
+    },
+    {
+      "name": "git",
+      "source": "./",
+      "strict": false,
+      "description": "Commit message format and commit granularity for any repository, whatever the language.",
+      "category": "workflow",
+      "tags": [
+        "git",
+        "commits",
+        "commit-message",
+        "changelog",
+        "release-notes",
+        "semver"
+      ],
+      "skills": [
+        "./skills/git"
+      ]
+    },
+    {
+      "name": "docker",
+      "source": "./",
+      "strict": false,
+      "description": "Rules for writing production Dockerfiles and .dockerignore files for any language or runtime.",
+      "category": "devops",
+      "tags": [
+        "docker",
+        "dockerfile",
+        "containers",
+        "multi-stage-build",
+        "security",
+        "ci"
+      ],
+      "skills": [
+        "./skills/docker"
+      ]
+    },
+    {
+      "name": "github",
+      "source": "./",
+      "strict": false,
+      "description": "CI/CD pipeline conventions for any language.",
+      "category": "devops",
+      "tags": [
+        "ci-cd",
+        "github-actions",
+        "gitlab-ci",
+        "docker",
+        "release",
+        "security",
+        "dependabot",
+        "supply-chain"
+      ],
+      "skills": [
+        "./skills/github"
+      ]
+    },
+    {
+      "name": "compose",
+      "source": "./",
+      "strict": false,
+      "description": "Local development stack for any language.",
+      "category": "devops",
+      "tags": [
+        "docker-compose",
+        "makefile",
+        "local-development",
+        "dotenv",
+        "secrets",
+        "keybase",
+        "developer-experience"
+      ],
+      "skills": [
+        "./skills/compose"
+      ]
+    },
+    {
+      "name": "dotenv",
+      "source": "./",
+      "strict": false,
+      "description": "Contract for application environment variables in any language.",
+      "category": "configuration",
+      "tags": [
+        "environment-variables",
+        "configuration",
+        "dotenv",
+        "secrets",
+        "twelve-factor"
+      ],
+      "skills": [
+        "./skills/dotenv"
+      ]
+    }
+  ]
+}
