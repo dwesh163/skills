@@ -1,5 +1,10 @@
 # Permissions
 
+## Contents
+
+- Case 1: group/role claims from an IdP (better-auth's access control)
+- Case 2: permissions managed internally
+
 Where authorization logic lives varies more than almost anything else in
 this stack, and it should — it depends entirely on who owns the permission
 model. Two cases cover most of it, the second with three sub-shapes.
@@ -269,6 +274,51 @@ export const projects = {
   },
 };
 ```
+
+**Server pages: use `auth.api.hasPermission`, don't hand-roll a `can()`.** To
+decide which controls to render, call it once per permission (they're
+independent, run them in `Promise.all`) and pass the booleans to the client
+component. It reads the member's role from the DB and handles comma-separated
+multi-role strings, which a home-made `roles[r].authorize()` wrapper has to
+re-implement. Client-side, `authClient.organization.checkRolePermission({ role,
+permissions })` is the synchronous equivalent when you already hold the role.
+
+```ts
+const check = async (permissions: Permissions) =>
+  (await auth.api.hasPermission({ headers: await headers(), body: { organizationId, permissions } })).success;
+const [canInvite, canUpdateMembers] = await Promise.all([
+  check({ invitation: ["create"] }),
+  check({ member: ["update"] }),
+]);
+```
+
+Export a `Permissions` type next to the statement
+(`{ [R in keyof typeof statement]?: (typeof statement)[R][number][] }`) so
+`check` is typed.
+
+**Custom role names (`viewer`, `manager`, ...).** Pass them in `roles` and set
+`creatorRole: "owner"`. Build each from the plugin's `ownerAc`/`adminAc`/
+`memberAc` statements plus your own resources; an empty list
+(`organization: []`) strips a default permission (a `manager` that invites and
+removes people but cannot edit/delete the organization). A read-only `viewer`
+is just `{ project: ["read"] }` — no default role fits it.
+
+**Assignable roles in the UI.** The plugin enforces server-side that only the
+creator role can invite or promote to the creator role (verified: manager →
+`YOU_ARE_NOT_ALLOWED_TO_INVITE_USER_WITH_THIS_ROLE`), but it ships no helper to
+list which roles an actor may hand out. Keep a three-line
+`assignableRoles(actorRole)` that hides `owner` from non-owners so the menu
+doesn't offer an option that is guaranteed to fail. It is UX only.
+
+**Invitations without a mailer.** `sendInvitationEmail` is required for the
+flow to be usable; until a mail provider exists, log the
+`/accept-invitation/<id>` link. `auth.api.listUserInvitations` throws
+`Email verification required...` for an unverified email — only call it when
+`user.emailVerified`, otherwise the dashboard 500s (the link itself still
+accepts fine). The accept page is a client page calling
+`authClient.organization.getInvitation({ query: { id } })` /
+`acceptInvitation`; `proxy.ts` sends anonymous visitors to `/sign-in?callbackUrl=...`
+and the sign-in/up form must follow that callback (same-origin paths only).
 
 Outside a request/response cycle — inside a plugin hook that only hands you
 a `referenceId` and a `user`, not `headers` to call `auth.api.hasPermission`

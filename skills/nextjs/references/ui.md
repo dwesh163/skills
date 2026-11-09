@@ -1,5 +1,12 @@
 # UI: shadcn/ui and theming
 
+## Contents
+
+- `components.json`
+- Bootstrapping into an existing project
+- Adding and customizing components
+- Theming: light/dark mode via CSS variables
+
 ## `components.json`
 
 ```json
@@ -18,6 +25,18 @@
 theming (`cssVariables: true` — see the theming section below, this is what
 makes the light/dark split possible without a second set of utility
 classes).
+
+## Bootstrapping into an existing project
+
+Writing `components.json` by hand and running `shadcn add` only drops the
+component files: it did **not** create `src/lib/utils.ts`, install `clsx`,
+`tailwind-merge`, `class-variance-authority`, `lucide-react`, `tw-animate-css`,
+nor write the theme tokens into `globals.css` (components then reference
+`bg-primary`, `border-border`, ... that don't exist). Either run
+`bunx shadcn@latest init` first, or add those packages, `cn()` and the
+`:root`/`.dark`/`@theme inline` blocks below by hand. `sonner` also needs
+`next-themes` and a `ThemeProvider` (`attribute="class"`) in the root layout,
+with `suppressHydrationWarning` on `<html>`. Check `tsc` afterwards.
 
 ## Adding and customizing components
 

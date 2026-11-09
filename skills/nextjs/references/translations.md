@@ -1,5 +1,16 @@
 # Translations
 
+## Contents
+
+- `src/i18n/` is a folder, not a flat `i18n.ts`
+- Locale detection (`src/services/locale.ts` or `src/lib/locale.ts`)
+- Root schema (larger, domain-heavy apps)
+- The `actions` tables
+- `errors.*` mirrors the `ExpectedError` codes exactly
+- Gender: store it on the entity, agree via ICU `select`
+- Don't duplicate translated text
+- Component-side conventions
+
 `next-intl`, `src/messages/en.json` and `src/messages/fr.json` — check the
 app's actual `defaultLocale`, it varies per project. The two files must
 always stay structurally identical (same key paths in both) — never add a

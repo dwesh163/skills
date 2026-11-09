@@ -1,5 +1,12 @@
 # Validation
 
+## Contents
+
+- Factory pattern for localized messages
+- `useValidationMessages` hook
+- Wiring into a form (`react-hook-form` + `@hookform/resolvers/zod`)
+- Auto-generated zod from the Prisma schema (optional, larger apps)
+
 `zod` schemas live in `src/validations/<domain>.ts`, never in
 `src/types/<domain>.ts` (which stays type-only). Check which major version
 of `zod` a project is actually on before writing new schemas — v4's
@@ -62,10 +69,19 @@ schema doing double duty with `.transform()` gymnastics.
 ## `useValidationMessages` hook
 
 The client-side half of the factory pattern — binds `next-intl` translations
-into the shape a schema factory expects:
+into the shape a schema factory expects.
+
+**Why a hook at all:** a schema factory needs its messages as plain strings,
+and in a client component the only way to get translated strings is
+`useTranslations`, which is a hook. Without it every form would repeat the
+same `t("required")`, `t("invalidEmail")`… lookups and wire them by hand into
+the factory. The hook does that binding once (and memoizes it, so the
+`useMemo`-built schema only rebuilds when the locale changes). It is not used
+on the server: there the schema is the non-localized instance built from
+`defaultSchemaMessages`.
 
 ```ts
-// src/hooks/use-validation-messages.ts
+// src/hooks/validation.ts
 "use client";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";

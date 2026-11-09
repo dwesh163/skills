@@ -1,5 +1,14 @@
 # Legal pages (privacy policy, terms of use)
 
+## Contents
+
+- The layout only groups the routes
+- One shared component, not one page per document
+- `LEGAL_LAST_UPDATED` — bumped by hand, never derived
+- Translation shape
+- These routes stay public
+- Metadata and sitemap
+
 Static, translated documents at `/legal/<slug>` — one shared rendering
 component driven by a `doc` prop, not one hand-written page per document:
 

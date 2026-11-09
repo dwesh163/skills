@@ -1,5 +1,10 @@
 # Stripe billing (`@better-auth/stripe`)
 
+## Contents
+
+- Base setup — billing per user
+- Billing per organization instead of per user
+
 A separate package, not part of core `better-auth`:
 `bun add @better-auth/stripe stripe`. Builds on the base auth setup in
 auth.md — read that first, this file only covers what the Stripe plugin
@@ -19,8 +24,9 @@ import { stripe } from "@better-auth/stripe";
 import Stripe from "stripe";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "@/lib/prisma";
+import { required } from "@/lib/utils";
 
-const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripeClient = new Stripe(required("STRIPE_SECRET_KEY"), {
   apiVersion: "2025-11-17.clover",
 });
 
@@ -29,15 +35,15 @@ export const auth = betterAuth({
   plugins: [
     stripe({
       stripeClient,
-      stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+      stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
       createCustomerOnSignUp: true, // creates the Stripe Customer at sign-up, not lazily on first checkout
       subscription: {
         enabled: true,
         plans: [
           {
             name: "pro",
-            priceId: process.env.STRIPE_PRICE_PRO_MONTHLY!,
-            annualDiscountPriceId: process.env.STRIPE_PRICE_PRO_YEARLY!,
+            priceId: required("STRIPE_PRICE_PRO_MONTHLY"),
+            annualDiscountPriceId: required("STRIPE_PRICE_PRO_YEARLY"),
             limits: { projects: 20, seats: 5 },
           },
           { name: "free", priceId: "", limits: { projects: 3, seats: 1 } },
@@ -128,10 +134,10 @@ export const auth = betterAuth({
     organization(), // members, roles (owner/admin/member by default), invitations
     stripe({
       stripeClient,
-      stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+      stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
       subscription: {
         enabled: true,
-        plans: [{ name: "pro", priceId: process.env.STRIPE_PRICE_PRO!, limits: { seats: 10 } }],
+        plans: [{ name: "pro", priceId: required("STRIPE_PRICE_PRO"), limits: { seats: 10 } }],
         authorizeReference: async ({ user, referenceId, action }) => {
           /* see below — this is the one part that must not be skipped */
         },

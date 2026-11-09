@@ -1,5 +1,14 @@
 # Server vs. client components
 
+## Contents
+
+- Signals that a component needs `"use client"`
+- Fragments: `<Fragment>`, never `<>...</>`
+- Data fetching split
+- Server actions vs. services
+- Mutations: `useMutation` and `useEntity`
+- Server functions over API routes
+
 Default to a server component. Only add `"use client";` when the component
 actually needs client-side behavior.
 
@@ -125,6 +134,99 @@ export async function signOutAction() {
 for the action wrapper above only when the sign-out needs to also do
 something server-only in the same request, e.g. invalidate app-specific
 state beyond the session itself.)
+
+## Mutations: `useMutation` and `useEntity`
+
+A client component never `await`s a server action and toasts by hand. Every
+mutation goes through one hook, so the pending state, the toast and the error
+handling are identical everywhere. Actions return `ServiceResponse<T>` (see
+above): the hook reads `error` and keys it into `errors.*`, or into `rules.*`
+when it starts with `rules.` (a `RuleError`) — never a raw message.
+
+```ts
+// src/hooks/mutation.ts
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useTransition } from "react";
+import { toast } from "sonner";
+import type { ServiceResponse } from "@/types/response";
+
+// Runs an action, toasts the outcome and hands the result back. The error is always a stable
+// code (`errors.*`, or `rules.<rule>` for business rules), never a raw message.
+export function useMutation() {
+  const translations = { errors: useTranslations("errors"), rules: useTranslations("rules") };
+  const [isPending, startTransition] = useTransition();
+
+  function run<T>(
+    action: () => Promise<ServiceResponse<T>>,
+    { success, onSuccess }: { success?: string; onSuccess?: (data: T | null) => void },
+  ) {
+    startTransition(async () => {
+      const { data, error } = await action();
+      if (error) {
+        toast.error(
+          error.startsWith("rules.") ? translations.rules(error.slice("rules.".length)) : translations.errors(error),
+        );
+        return;
+      }
+      if (success) toast.success(success);
+      onSuccess?.(data);
+    });
+  }
+
+  return { run, isPending };
+}
+```
+
+`success` is optional (a verify button only needs the error path). Usage in a
+form or a row action:
+
+```tsx
+const mutation = useMutation();
+const onSubmit = handleSubmit((values) =>
+  mutation.run(() => createEvent(values), {
+    success: message("success.create"),
+    onSuccess: () => { setOpen(false); reset(); router.refresh(); },
+  }),
+);
+// <Button disabled={mutation.isPending}>…
+```
+
+Dialog buttons (`ConfirmDialog`, `DeleteButton`, `FormDialog`) take the action
+and the copy as props and call `useMutation` themselves, so a domain never
+writes its own delete-confirmation.
+
+`useEntity` is its sibling: it computes an entity's names once per component
+(`entity`, `Entity`, `entities`, `Entities`, `gender`) and exposes
+`field(key)` (`entities.<entity>.fields.<key>`) and `message(key)` (the shared
+`actions.*` messages with those names filled in), which is what the
+`success.*` / `dialog.*` messages of translations.md expect:
+
+```ts
+// src/hooks/entity.ts
+"use client";
+
+import { useTranslations } from "next-intl";
+import type { Entity } from "@/constants/resources";
+
+export function useEntity(entity: Entity) {
+  const translations = { actions: useTranslations("actions"), entity: useTranslations(`entities.${entity}`) };
+  const names = {
+    entity: translations.entity("singular"),
+    Entity: translations.entity("title.singular"),
+    entities: translations.entity("plural"),
+    Entities: translations.entity("title.plural"),
+    gender: translations.entity("gender"),
+  };
+  return {
+    names,
+    field: (key: string) => translations.entity(`fields.${key}`),
+    message: (key: string, values?: Record<string, string | number>) =>
+      translations.actions(key, { ...names, ...values }),
+  };
+}
+```
 
 ## Server functions over API routes
 

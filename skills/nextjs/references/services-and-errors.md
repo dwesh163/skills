@@ -1,5 +1,15 @@
 # Services and errors
 
+## Contents
+
+- Naming entities: `IDENTITIES`, not hardcoded strings
+- Shape A — owns the database, sanitized responses
+- Shape B — thin BFF over an external REST API
+- The `ExpectedError` hierarchy (`src/constants/errors.ts`)
+- Shape C — owns the data, throws directly (small apps)
+- The not-found / error trio — three distinct situations
+- `load` — never swallow an error with `.catch(() => [])`
+
 Three valid shapes for the service layer, depending on what the app owns and
 how much it needs to protect. Check which one an existing repo already uses
 before adding a new service — don't mix them within one codebase.
@@ -201,6 +211,16 @@ Alias at the import, not by renaming the service's export or changing what
 `export const organisations = { list, get, create, ... }` everywhere; only
 the rare call site that needs the plural name twice adds one word to its
 import line.
+
+**A client component can't call an inline `"use server"` method of that object.** The service
+file isn't a `"use server"` module, so importing it from a client component pulls the whole file
+(axios, auth, headers) into the client bundle. Keep services read-only (plain methods) and put the
+mutations in `src/actions/<domain>.ts` — a top-level `"use server"` file exporting async functions
+(`createEvent`, `removeTeam`...) that a client dialog can import. Have them return
+`ServiceResponse<T>` through `toResponse` so the stable error code survives the client boundary
+(a thrown error loses its class there), and let one `useMutation()` hook toast
+`errors.*` / `rules.<rule>` from it (the hook itself is in client-components.md). Map the upstream's business-rule messages to `RuleError` once,
+in the `lib/api.ts` response interceptor, with a small message -> rule table.
 
 Mutations call `revalidatePath`/`revalidateTag` after the write instead of
 returning updated data for the caller to splice in — the next render just

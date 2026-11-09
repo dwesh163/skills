@@ -1,5 +1,18 @@
 # Prisma
 
+## Contents
+
+- Layout
+- `prisma.config.ts`
+- `schema.prisma`
+- Names: snake_case in the database, mapped everywhere
+- Auth tables — generated, not hand-written
+- `src/lib/prisma.ts` — the singleton
+- Bootstrapping gotchas
+- Local dev database
+- Dockerfile
+- `.env` / `.env.example`
+
 Not every app in this stack owns a database at all — a thin BFF over an
 external API (services-and-errors.md's Shape B) or an app backed by
 something else entirely (e.g. Kubernetes/Helm releases standing in for a
@@ -176,17 +189,17 @@ each regeneration and put back any `@map` it dropped.
 ## `src/lib/prisma.ts` — the singleton
 
 Uses the `pg` driver adapter (not Prisma's built-in connection handling) and
-the standard Next.js dev-hot-reload-safe global singleton:
+the standard Next.js dev-hot-reload-safe global singleton. `PrismaPg` takes the
+connection string directly — no hand-built `Pool` and no
+`as unknown as ConstructorParameters<...>` cast:
 
 ```ts
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 import { PrismaClient } from "../../generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool as unknown as ConstructorParameters<typeof PrismaPg>[0]);
+const adapter = new PrismaPg(process.env.DATABASE_URL ?? "");
 
 export const prisma =
   globalForPrisma.prisma ??
@@ -199,11 +212,29 @@ Without the `globalThis` cache, Next.js's dev-mode module reloading creates a
 new `PrismaClient` (and a new connection pool) on every hot reload, quickly
 exhausting Postgres's connection limit.
 
+## Bootstrapping gotchas
+
+- **Pin the CLI to the client's version.** `bun add -d prisma` can resolve a
+  newer major (an 8.x RC) than `@prisma/client`/`@prisma/adapter-pg` (7.x). Run
+  `bun add -d prisma@<same version as @prisma/client>`.
+- **Chicken-and-egg with the better-auth CLI.** `@better-auth/cli generate`
+  imports `src/lib/auth/server.ts`, which imports `src/lib/prisma.ts`, which
+  imports the generated client. On a fresh project, write a schema with just
+  the `generator` + `datasource`, run `bunx prisma generate` (works with zero
+  models), *then* `bunx @better-auth/cli@latest generate --config
+  src/lib/auth/server.ts --output src/prisma/schema.prisma -y`, then
+  `bunx prisma migrate dev --name init`. Export `.env` first (`set -a; . ./.env`).
+- **No `postinstall: prisma generate`** — the Dockerfile `deps` stage only copies
+  `package.json`/lockfile, so there is no schema yet and install would fail.
+  Generate in `dev`/`build` scripts and in the builder stage instead.
+
 ## Local dev database
 
-Postgres is started via `make up` (a `Makefile` + `docker-compose.dev.yml`
-— see git-workflow.md), not an inline `docker run` stuffed into
-`package.json`. `package.json`'s own scripts stay plain:
+Postgres runs in Docker Compose next to the dev server, started by `make up`
+(a `Makefile` + `docker-compose.dev.yml` — see local-dev.md), not an inline
+`docker run` stuffed into `package.json`. Compose applies the migrations
+(`prisma migrate deploy`) once Postgres is healthy, before the dev server
+starts. `package.json`'s own scripts stay plain:
 
 ```json
 "dev": "bunx prisma generate && next dev",
@@ -222,7 +253,8 @@ client, since `generated/` isn't checked in:
 
 ```dockerfile
 RUN bunx prisma generate
-RUN node node_modules/.bin/next build
+RUN node node_modules/.bin/next build   # with the inline env placeholders from tooling.md
+# (BETTER_AUTH_SECRET, BETTER_AUTH_URL and a dummy DATABASE_URL — PrismaPg is built at import time)
 ```
 
 ## `.env` / `.env.example`

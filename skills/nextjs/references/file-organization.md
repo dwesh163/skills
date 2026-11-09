@@ -1,5 +1,17 @@
 # File organization
 
+## Contents
+
+- Top-level `src/` layout
+- Domain mirroring
+- Component file names inside a domain folder
+- Generic component folders — not `ui/`, not a domain
+- The `providers/` folder
+- Naming: nest instead of hyphenating
+- Feature sub-folders
+- Imports
+- `.gitignore` additions this stack always needs
+
 This base layout holds regardless of app size — a small internal tool and a
 large multi-domain platform both use it, the large one just has more domain
 folders under each top-level directory.
@@ -19,6 +31,9 @@ src/
   constants/              — status configs, enums, static lookup tables, per domain
   types/                   — Prisma-derived / API-derived types only, no zod here
   validations/             — zod schemas, one file per domain (see validation.md)
+  hooks/                    — client hooks, files named for the thing with no `use-` prefix:
+                              mutation.ts (useMutation), entity.ts (useEntity), validation.ts
+                              (useValidationMessages) — the exported function keeps `useX`
   lib/
     auth/
       server.ts                — the betterAuth instance, getUser()/session()
@@ -192,17 +207,18 @@ that domain instead — `components/product/table.tsx`, not
 Rule of thumb before naming a file `x-y.tsx`: does `x` or `y` name a domain
 this codebase already organizes by — its own folder, or the one the file is
 already inside? If yes, drop that word and nest or flatten accordingly. If
-neither half is a domain word, keep the hyphen. This doesn't apply to the
-`use-<thing>.tsx` hook-naming convention below — `use-` is a functional
-prefix, not a domain word, and always stays hyphenated.
+neither half is a domain word, keep the hyphen. Hook files are the exception
+in the other direction: the file is named for the thing, with no `use-`
+prefix (`hooks/mutation.ts` exports `useMutation`), because the `use` already
+lives in the exported name.
 
 ## Feature sub-folders
 
 When a component grows enough internal pieces to need its own hook/sub-parts
 (filters, uploads, multi-step forms), give it a folder instead of one huge
-file: `components/product/filters/{use-product-filters.tsx,fields.tsx,sidebar.tsx}`.
-The hook file is named `use-<thing>.tsx` even when it also exports non-hook
-helpers.
+file: `components/product/filters/{filters.tsx,fields.tsx,sidebar.tsx}`.
+The hook file is named for the thing (`filters.tsx`, exporting
+`useProductFilters`), even when it also exports non-hook helpers.
 
 ## Imports
 

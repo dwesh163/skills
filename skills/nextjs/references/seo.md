@@ -1,5 +1,21 @@
 # SEO & metadata: titles, Open Graph, sitemap, robots, icons
 
+## Contents
+
+- `SITE` — one source of truth
+- Root layout — defaults and the title template
+- Per-page metadata
+- Translations
+- Open Graph & Twitter images
+- Icons, manifest, theme color
+- `sitemap.ts`
+- `robots.ts`
+- Private and utility pages: `noindex`
+- Structured data (JSON-LD)
+- i18n caveat
+- Keep the routes public in `proxy.ts`
+- Checklist for a new public page
+
 Everything a crawler or a link-preview reads, built with Next's file-based
 metadata API — no `next-seo`, no hand-written `<head>` tags. Public,
 indexable pages get full metadata; everything behind `proxy.ts` gets
